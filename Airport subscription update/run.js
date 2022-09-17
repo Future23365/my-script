@@ -1,15 +1,26 @@
 import { readFileSync, watchFile } from "fs";
-import { writeFile } from "fs/promises";
+import path from 'path'
+import { writeFile, appendFile } from "fs/promises";
 import notifier from "node-notifier";
-const proxyConfigPath = '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/subscribe_zi.conf'
-const localConfigPath = '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/Copy\ 自由飞.conf'
+const configPathArray = [
+  {
+    proxy: '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/subscribe_zi.conf',
+    local: '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/Copy\ 自由飞.conf',
+    name: '自由飞'
+  },
+  {
+    proxy: '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/subscribebai.conf',
+    local: '/Users/liusongbai/Library/Mobile\ Documents/iCloud\~com\~nssurge\~inc/Documents/Copy\ 白月光.conf',
+    name: '白月光'
+  }
+]
 
-function updateFile() {
-  let data = readFileSync(proxyConfigPath).toString();
+function updateFile(proxyPath, localPath) {
+  let data = readFileSync(proxyPath).toString();
   const copyText = data.match(
     /.*\[Proxy\sGroup\]\sProxy\s=\sselect,\sauto,\sfallback,\s(.*\s)/
   )[1];
-  let targetData = readFileSync(localConfigPath).toString();
+  let targetData = readFileSync(localPath).toString();
   let newstr = targetData.replace(
     /.*(\[Proxy\sGroup\]\sProxy\s=\sselect,\s)(.*)\s/,
     function (match, p1, p2) {
@@ -17,7 +28,7 @@ function updateFile() {
     }
   );
 
-  writeFile(localConfigPath, newstr)
+  writeFile(localPath, newstr)
     .then((res) => {
       notifier.notify(
         {
@@ -51,8 +62,13 @@ function updateFile() {
       );
     });
 }
-updateFile()
-watchFile(proxyConfigPath, function(curr, prev) {
-  console.log(`订阅更新时间: ${curr.mtime}`);
-  updateFile()
+
+configPathArray.forEach((item) => {
+  updateFile(item.proxy, item.local)
+  watchFile(item.proxy, function(curr, prev) {
+    const str = `${curr.mtime}: 【${item.name}】订阅同步\n`
+    console.log(str);
+    appendFile(`${path.resolve()}/log.log`,str)
+    updateFile(item.proxy, item.local)
+  })
 })
